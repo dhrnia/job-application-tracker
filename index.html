@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Job Application Tracker</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Job applications</p>
+          <h1>Application tracker</h1>
+        </div>
+        <button class="primary-button" id="clearCompleted" type="button">Clear closed</button>
+      </header>
+
+      <section class="stats-grid" aria-label="Application summary">
+        <article class="stat">
+          <span id="totalCount">0</span>
+          <p>Total</p>
+        </article>
+        <article class="stat">
+          <span id="interviewingCount">0</span>
+          <p>Interviewing</p>
+        </article>
+        <article class="stat">
+          <span id="offeredCount">0</span>
+          <p>Offered</p>
+        </article>
+        <article class="stat">
+          <span id="rejectedCount">0</span>
+          <p>Rejected</p>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <form class="application-form" id="applicationForm">
+          <h2>Add application</h2>
+          <input type="hidden" id="editingId" />
+
+          <label>
+            Company
+            <input id="company" name="company" type="text" placeholder="Example: Acme" required />
+          </label>
+
+          <label>
+            Role
+            <input id="role" name="role" type="text" placeholder="Example: Frontend Developer" required />
+          </label>
+
+          <div class="form-row">
+            <label>
+              Rounds reached
+              <input id="rounds" name="rounds" type="number" min="0" max="12" value="0" required />
+            </label>
+
+            <label>
+              Status
+              <select id="status" name="status" required>
+                <option value="Applied">Applied</option>
+                <option value="Interviewing">Interviewing</option>
+                <option value="Rejected">Rejected</option>
+                <option value="Offered">Offered</option>
+              </select>
+            </label>
+          </div>
+
+          <label>
+            Notes
+            <textarea id="notes" name="notes" rows="4" placeholder="Recruiter name, next interview, salary range..."></textarea>
+          </label>
+
+          <div class="form-actions">
+            <button class="primary-button" type="submit" id="submitButton">Add application</button>
+            <button class="ghost-button" type="button" id="cancelEdit" hidden>Cancel</button>
+          </div>
+        </form>
+
+        <section class="list-panel">
+          <div class="list-header">
+            <h2>Pipeline</h2>
+            <div class="filters" aria-label="Filter applications">
+              <button class="filter-button active" type="button" data-filter="All">All</button>
+              <button class="filter-button" type="button" data-filter="Applied">Applied</button>
+              <button class="filter-button" type="button" data-filter="Interviewing">Interviewing</button>
+              <button class="filter-button" type="button" data-filter="Offered">Offered</button>
+              <button class="filter-button" type="button" data-filter="Rejected">Rejected</button>
+            </div>
+          </div>
+
+          <div class="applications" id="applications"></div>
+        </section>
+      </section>
+    </main>
+
+    <template id="applicationTemplate">
+      <article class="application-card">
+        <div class="card-main">
+          <div>
+            <h3></h3>
+            <p class="role"></p>
+          </div>
+          <span class="status-pill"></span>
+        </div>
+        <div class="meta-row">
+          <span class="rounds"></span>
+          <span class="date"></span>
+        </div>
+        <p class="notes"></p>
+        <div class="card-actions">
+          <button class="ghost-button edit-button" type="button">Edit</button>
+          <button class="danger-button delete-button" type="button">Delete</button>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
