@@ -1,4 +1,6 @@
 const storageKey = "job-application-tracker";
+const password = "1703";
+const unlockKey = "job-application-tracker-unlocked";
 
 const defaultApplications = [
   {
@@ -28,11 +30,34 @@ const submitButton = document.querySelector("#submitButton");
 const cancelEdit = document.querySelector("#cancelEdit");
 const clearCompleted = document.querySelector("#clearCompleted");
 const filters = document.querySelectorAll(".filter-button");
+const lockScreen = document.querySelector("#lockScreen");
+const lockForm = document.querySelector("#lockForm");
+const lockError = document.querySelector("#lockError");
+const passwordInput = document.querySelector("#passwordInput");
+const appShell = document.querySelector("#appShell");
 
 let applications = loadApplications();
 let currentFilter = "All";
 
-render();
+if (sessionStorage.getItem(unlockKey) === "true") {
+  unlockApp();
+} else {
+  passwordInput.focus();
+}
+
+lockForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  if (passwordInput.value === password) {
+    sessionStorage.setItem(unlockKey, "true");
+    unlockApp();
+    return;
+  }
+
+  lockError.hidden = false;
+  passwordInput.value = "";
+  passwordInput.focus();
+});
 
 form.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -141,6 +166,12 @@ function render() {
 
     applicationsEl.append(card);
   });
+}
+
+function unlockApp() {
+  lockScreen.hidden = true;
+  appShell.hidden = false;
+  render();
 }
 
 function renderStats() {

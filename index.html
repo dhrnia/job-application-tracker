@@ -7,7 +7,20 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="app-shell">
+    <section class="lock-screen" id="lockScreen" aria-label="Website lock">
+      <form class="lock-panel" id="lockForm">
+        <p class="eyebrow">Private tracker</p>
+        <h1>Enter password</h1>
+        <label>
+          Password
+          <input id="passwordInput" type="password" inputmode="numeric" autocomplete="current-password" required />
+        </label>
+        <p class="lock-error" id="lockError" role="alert" hidden>Incorrect password.</p>
+        <button class="primary-button" type="submit">Unlock</button>
+      </form>
+    </section>
+
+    <main class="app-shell" id="appShell" hidden>
       <header class="topbar">
         <div>
           <p class="eyebrow">Job applications</p>
