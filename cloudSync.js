@@ -1,7 +1,5 @@
 const CLOUD_CONFIG = {
-  jsonBinKey: "",
-  jsonBinId: "",
-  baseUrl: "https://api.jsonbin.io/v3/b",
+  apiUrl: "/api/sync",
   debounceMs: 1500
 };
 
@@ -14,8 +12,8 @@ class CloudSync {
     this.isSyncing = false;
     this.pendingSync = false;
     this.statusEl = document.querySelector("#syncStatus");
-    this.isConfigured = Boolean(CLOUD_CONFIG.jsonBinKey && CLOUD_CONFIG.jsonBinId);
-    this.setStatus(this.isConfigured ? "Cloud sync ready." : "Cloud sync is not configured.");
+    this.isConfigured = true;
+    this.setStatus("Cloud sync ready.");
   }
 
   async loadFromCloud() {
@@ -54,15 +52,12 @@ class CloudSync {
       const merged = this.mergeData(this.readLocalData(), await this.fetchCloudData());
       this.writeLocalData(merged);
 
-      const response = await fetch(`${CLOUD_CONFIG.baseUrl}/${CLOUD_CONFIG.jsonBinId}`, {
+      const response = await fetch(CLOUD_CONFIG.apiUrl, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
-          "X-Master-Key": CLOUD_CONFIG.jsonBinKey
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          initialized: true,
-          lastSync: new Date().toISOString(),
           applications: merged.applications,
           deletedApplications: merged.deletedApplications
         })
@@ -83,12 +78,7 @@ class CloudSync {
   }
 
   async fetchCloudData() {
-    const response = await fetch(`${CLOUD_CONFIG.baseUrl}/${CLOUD_CONFIG.jsonBinId}/latest`, {
-      headers: {
-        "X-Master-Key": CLOUD_CONFIG.jsonBinKey,
-        "X-Bin-Meta": "false"
-      }
-    });
+    const response = await fetch(CLOUD_CONFIG.apiUrl);
     if (!response.ok) throw new Error("Cloud download failed");
 
     const data = await response.json();
