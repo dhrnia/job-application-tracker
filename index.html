@@ -137,7 +137,14 @@
       </article>
     </template>
 
-    <script src="cloudSync.js"></script>
+    <!-- Load order: cloudSync → models → store → app -->
+    <script src="js/cloudSync.js"></script>
+    <script src="js/models/Application.js"></script>
+    <script src="js/models/Company.js"></script>
+    <script src="js/models/Contact.js"></script>
+    <script src="js/models/Interview.js"></script>
+    <script src="js/models/Reminder.js"></script>
+    <script src="js/store.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

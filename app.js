@@ -1,56 +1,60 @@
-const storageKey = "job-application-tracker";
-const deletedApplicationsKey = "job-application-tracker-deleted";
+// ===========================================================================
+// app.js — Job Application Tracker UI
+// ===========================================================================
+// Depends on: store (global from js/store.js)
+//             cloudSync (global from js/cloudSync.js)
+// ===========================================================================
+
 const password = "1703";
 const unlockKey = "job-application-tracker-unlocked";
 
-const defaultApplications = [
-  {
-    id: createId(),
-    company: "Northstar Labs",
-    role: "Frontend Developer",
-    source: "LinkedIn",
-    rounds: 2,
-    status: "Interviewing",
-    notes: "Technical interview scheduled next week.",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: createId(),
-    company: "BrightPath",
-    role: "Product Engineer",
-    source: "Company website",
-    rounds: 4,
-    status: "Offered",
-    notes: "Received offer. Compare with expected salary range.",
-    createdAt: new Date().toISOString()
-  }
-];
-
-const form = document.querySelector("#applicationForm");
+// --- DOM references ---------------------------------------------------------
+const form           = document.querySelector("#applicationForm");
 const applicationsEl = document.querySelector("#applications");
-const template = document.querySelector("#applicationTemplate");
-const submitButton = document.querySelector("#submitButton");
-const cancelEdit = document.querySelector("#cancelEdit");
+const template       = document.querySelector("#applicationTemplate");
+const submitButton   = document.querySelector("#submitButton");
+const cancelEdit     = document.querySelector("#cancelEdit");
 const clearCompleted = document.querySelector("#clearCompleted");
-const filters = document.querySelectorAll(".filter-button");
-const lockScreen = document.querySelector("#lockScreen");
-const lockForm = document.querySelector("#lockForm");
-const lockError = document.querySelector("#lockError");
-const passwordInput = document.querySelector("#passwordInput");
-const appShell = document.querySelector("#appShell");
-const saveStatus = document.querySelector("#saveStatus");
-const syncStatus = document.querySelector("#syncStatus");
+const filters        = document.querySelectorAll(".filter-button");
+const lockScreen     = document.querySelector("#lockScreen");
+const lockForm       = document.querySelector("#lockForm");
+const lockError      = document.querySelector("#lockError");
+const passwordInput  = document.querySelector("#passwordInput");
+const appShell       = document.querySelector("#appShell");
+const saveStatus     = document.querySelector("#saveStatus");
 
-let applications = loadApplications();
-let deletedApplications = loadDeletedApplications();
+// --- State ------------------------------------------------------------------
+let applications  = store.getApplications();
 let currentFilter = "All";
 
+// --- Seed default data on first visit ---------------------------------------
+if (applications.length === 0) {
+  store.addApplication({
+    company: "Northstar Labs",
+    role:    "Frontend Developer",
+    source:  "LinkedIn",
+    rounds:  2,
+    status:  "Interviewing",
+    notes:   "Technical interview scheduled next week."
+  });
+  store.addApplication({
+    company: "BrightPath",
+    role:    "Product Engineer",
+    source:  "Company website",
+    rounds:  4,
+    status:  "Offered",
+    notes:   "Received offer. Compare with expected salary range."
+  });
+  applications = store.getApplications();
+}
+
+// --- Boot -------------------------------------------------------------------
 initializeApp();
 
 /**
- * Initialise the app.  Local data is loaded synchronously so the UI is
- * ready instantly; cloud data is fetched in the background and merged
- * when it arrives (the "clouddatachanged" event triggers a re-render).
+ * Show the UI immediately from localStorage, then fetch cloud data in
+ * the background.  The "cloudsyncupdated" event triggers a re-render
+ * when the cloud merge finishes.
  */
 async function initializeApp() {
   if (sessionStorage.getItem(unlockKey) === "true") {
@@ -59,13 +63,13 @@ async function initializeApp() {
     passwordInput.focus();
   }
 
-  // Non-blocking cloud fetch — failures are handled inside cloudSync.
+  // Non-blocking — failures are handled inside cloudSync.
   await cloudSync.loadFromCloud();
-  applications = loadApplications();
-  deletedApplications = loadDeletedApplications();
+  applications = store.getApplications();
   render();
 }
 
+// --- Lock screen ------------------------------------------------------------
 lockForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
@@ -80,63 +84,62 @@ lockForm.addEventListener("submit", (event) => {
   passwordInput.focus();
 });
 
+// --- Add / Edit form --------------------------------------------------------
 form.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const formData = new FormData(form);
+  const formData  = new FormData(form);
   const editingId = document.querySelector("#editingId").value;
-  const existingApplication = applications.find((item) => item.id === editingId);
   const timestamp = new Date().toISOString();
-  const application = {
-    id: editingId || createId(),
-    company: formData.get("company").trim(),
-    role: formData.get("role").trim(),
-    source: formData.get("source").trim(),
-    rounds: Number(formData.get("rounds")),
-    status: formData.get("status"),
-    notes: formData.get("notes").trim(),
-    createdAt: existingApplication?.createdAt || timestamp,
+
+  const data = {
+    company:   formData.get("company").trim(),
+    role:      formData.get("role").trim(),
+    source:    formData.get("source").trim(),
+    rounds:    Number(formData.get("rounds")),
+    status:    formData.get("status"),
+    notes:     formData.get("notes").trim(),
     updatedAt: timestamp
   };
 
-  delete deletedApplications[application.id];
-
   if (editingId) {
-    applications = applications.map((item) => (item.id === editingId ? application : item));
+    store.updateApplication(editingId, data);
   } else {
-    applications = [application, ...applications];
+    data.createdAt = timestamp;
+    store.addApplication(data);
   }
 
-  saveApplications();
+  applications = store.getApplications();
+  setSaveStatus("Saved locally.");
   resetForm();
   render();
 });
 
 cancelEdit.addEventListener("click", resetForm);
 
+// --- Clear closed (Rejected + Offered) --------------------------------------
 clearCompleted.addEventListener("click", () => {
-  const removedApplications = applications.filter(
-    (application) => ["Rejected", "Offered"].includes(application.status)
+  const toRemove = applications.filter(
+    (app) => ["Rejected", "Offered"].includes(app.status)
   );
-  removedApplications.forEach((application) => {
-    deletedApplications[application.id] = new Date().toISOString();
-  });
-  applications = applications.filter(
-    (application) => !["Rejected", "Offered"].includes(application.status)
-  );
-  saveApplications();
+  toRemove.forEach((app) => store.deleteApplication(app.id));
+
+  applications = store.getApplications();
+  setSaveStatus("Saved locally.");
   render();
 });
 
+// --- Filters ----------------------------------------------------------------
 filters.forEach((button) => {
   button.addEventListener("click", () => {
     currentFilter = button.dataset.filter;
-    filters.forEach((filterButton) => filterButton.classList.remove("active"));
+    filters.forEach((b) => b.classList.remove("active"));
     button.classList.add("active");
     render();
   });
 });
 
+// --- Card actions (edit / delete) -------------------------------------------
 applicationsEl.addEventListener("click", (event) => {
   const card = event.target.closest(".application-card");
   if (!card) return;
@@ -145,36 +148,52 @@ applicationsEl.addEventListener("click", (event) => {
   if (!application) return;
 
   if (event.target.matches(".delete-button")) {
-    deletedApplications[application.id] = new Date().toISOString();
-    applications = applications.filter((item) => item.id !== application.id);
-    saveApplications();
+    store.deleteApplication(application.id);
+    applications = store.getApplications();
+    setSaveStatus("Saved locally.");
     render();
   }
 
   if (event.target.matches(".edit-button")) {
     document.querySelector("#editingId").value = application.id;
-    document.querySelector("#company").value = application.company;
-    document.querySelector("#role").value = application.role;
-    document.querySelector("#source").value = application.source || "";
-    document.querySelector("#rounds").value = application.rounds;
-    document.querySelector("#status").value = application.status;
-    document.querySelector("#notes").value = application.notes;
+    document.querySelector("#company").value   = application.company;
+    document.querySelector("#role").value      = application.role;
+    document.querySelector("#source").value    = application.source || "";
+    document.querySelector("#rounds").value    = application.rounds;
+    document.querySelector("#status").value    = application.status;
+    document.querySelector("#notes").value     = application.notes;
     submitButton.textContent = "Save changes";
     cancelEdit.hidden = false;
     form.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 });
 
+// --- Cloud sync listeners ---------------------------------------------------
+
+/** After cloud data is merged into localStorage, re-read and re-render. */
+window.addEventListener("cloudsyncupdated", () => {
+  applications = store.getApplications();
+  render();
+});
+
+/** Re-sync when the user switches back to this tab. */
+window.addEventListener("focus", () => cloudSync.loadFromCloud());
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") cloudSync.loadFromCloud();
+});
+
+// --- Render -----------------------------------------------------------------
+
 function render() {
-  const visibleApplications =
+  const visible =
     currentFilter === "All"
       ? applications
-      : applications.filter((application) => application.status === currentFilter);
+      : applications.filter((app) => app.status === currentFilter);
 
   renderStats();
   applicationsEl.innerHTML = "";
 
-  if (visibleApplications.length === 0) {
+  if (visible.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty-state";
     empty.textContent = "No applications here yet.";
@@ -182,10 +201,10 @@ function render() {
     return;
   }
 
-  visibleApplications.forEach((application) => {
+  visible.forEach((application) => {
     const card = template.content.firstElementChild.cloneNode(true);
     card.dataset.id = application.id;
-    card.querySelector("h3").textContent = application.company;
+    card.querySelector("h3").textContent  = application.company;
     card.querySelector(".role").textContent = application.role;
     card.querySelector(".rounds").textContent = `${application.rounds} round${
       application.rounds === 1 ? "" : "s"
@@ -206,72 +225,22 @@ function render() {
 
 function unlockApp() {
   lockScreen.hidden = true;
-  appShell.hidden = false;
+  appShell.hidden   = false;
   render();
 }
 
 function renderStats() {
-  document.querySelector("#totalCount").textContent = applications.length;
-  document.querySelector("#interviewingCount").textContent = countStatus("Interviewing");
-  document.querySelector("#offeredCount").textContent = countStatus("Offered");
-  document.querySelector("#rejectedCount").textContent = countStatus("Rejected");
+  document.querySelector("#totalCount").textContent        = applications.length;
+  document.querySelector("#interviewingCount").textContent  = countStatus("Interviewing");
+  document.querySelector("#offeredCount").textContent       = countStatus("Offered");
+  document.querySelector("#rejectedCount").textContent      = countStatus("Rejected");
 }
 
 function countStatus(status) {
-  return applications.filter((application) => application.status === status).length;
+  return applications.filter((app) => app.status === status).length;
 }
 
-function loadApplications() {
-  try {
-    const saved = localStorage.getItem(storageKey);
-    const parsed = saved ? JSON.parse(saved) : null;
-    if (Array.isArray(parsed)) return parsed;
-
-    localStorage.setItem(storageKey, JSON.stringify(defaultApplications));
-    return defaultApplications;
-  } catch {
-    return defaultApplications;
-  }
-}
-
-function saveApplications() {
-  try {
-    localStorage.setItem(storageKey, JSON.stringify(applications));
-    localStorage.setItem(deletedApplicationsKey, JSON.stringify(deletedApplications));
-    cloudSync.schedulePush();
-    setSaveStatus("Saved locally.");
-    return true;
-  } catch {
-    setSaveStatus("Your browser is blocking local storage. Open this tracker outside private browsing and try again.", true);
-    return false;
-  }
-}
-
-function loadDeletedApplications() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(deletedApplicationsKey) || "{}");
-    return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
-  } catch {
-    return {};
-  }
-}
-
-/**
- * When cloudSync merges remote + local data it fires this custom event.
- * We update the in-memory arrays and re-render so the user sees any new
- * or updated applications from other devices.
- */
-window.addEventListener("clouddatachanged", (event) => {
-  applications = event.detail.applications;
-  deletedApplications = event.detail.deletedApplications;
-  render();
-});
-
-window.addEventListener("focus", () => cloudSync.loadFromCloud());
-
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") cloudSync.loadFromCloud();
-});
+// --- Helpers ----------------------------------------------------------------
 
 function setSaveStatus(message, isError = false) {
   saveStatus.textContent = message;
@@ -289,15 +258,7 @@ function resetForm() {
 function formatDate(dateString) {
   return new Intl.DateTimeFormat("en", {
     month: "short",
-    day: "numeric",
-    year: "numeric"
+    day:   "numeric",
+    year:  "numeric"
   }).format(new Date(dateString));
-}
-
-function createId() {
-  if (globalThis.crypto?.randomUUID) {
-    return globalThis.crypto.randomUUID();
-  }
-
-  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
