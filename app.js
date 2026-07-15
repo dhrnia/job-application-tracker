@@ -39,6 +39,7 @@ const lockError = document.querySelector("#lockError");
 const passwordInput = document.querySelector("#passwordInput");
 const appShell = document.querySelector("#appShell");
 const saveStatus = document.querySelector("#saveStatus");
+const syncStatus = document.querySelector("#syncStatus");
 
 let applications = loadApplications();
 let deletedApplications = loadDeletedApplications();
@@ -46,15 +47,23 @@ let currentFilter = "All";
 
 initializeApp();
 
+/**
+ * Initialise the app.  Local data is loaded synchronously so the UI is
+ * ready instantly; cloud data is fetched in the background and merged
+ * when it arrives (the "clouddatachanged" event triggers a re-render).
+ */
 async function initializeApp() {
-  await cloudSync.loadFromCloud();
-  applications = loadApplications();
-
   if (sessionStorage.getItem(unlockKey) === "true") {
     unlockApp();
   } else {
     passwordInput.focus();
   }
+
+  // Non-blocking cloud fetch — failures are handled inside cloudSync.
+  await cloudSync.loadFromCloud();
+  applications = loadApplications();
+  deletedApplications = loadDeletedApplications();
+  render();
 }
 
 lockForm.addEventListener("submit", (event) => {
@@ -247,6 +256,11 @@ function loadDeletedApplications() {
   }
 }
 
+/**
+ * When cloudSync merges remote + local data it fires this custom event.
+ * We update the in-memory arrays and re-render so the user sees any new
+ * or updated applications from other devices.
+ */
 window.addEventListener("clouddatachanged", (event) => {
   applications = event.detail.applications;
   deletedApplications = event.detail.deletedApplications;
