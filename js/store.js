@@ -276,13 +276,30 @@ class Store {
 
   /**
    * Generic delete-by-id.
+   * Records a timestamped tombstone so the deletion survives cloud sync
+   * (other devices won't re-introduce the item on their next push).
    * @private
    * @param {string} domain
    * @param {string} id
    */
   _deleteItem(domain, id) {
+    this._recordTombstone(id);
     const list = this._read(domain).filter((item) => item.id !== id);
     this._write(domain, list);
+  }
+
+  /**
+   * Record a deletion tombstone: { id: ISO-timestamp }.
+   * CloudSync merges these across devices so a deleted item stays deleted.
+   * @private
+   * @param {string} id
+   */
+  _recordTombstone(id) {
+    const key = this.prefix + "tombstones";
+    let tombstones = {};
+    try { tombstones = JSON.parse(localStorage.getItem(key) || "{}"); } catch { /* empty */ }
+    tombstones[id] = new Date().toISOString();
+    localStorage.setItem(key, JSON.stringify(tombstones));
   }
 
   /**
@@ -327,6 +344,11 @@ class Store {
     const settingsKey = this.prefix + "settings";
     if (localStorage.getItem(settingsKey) === null) {
       localStorage.setItem(settingsKey, JSON.stringify(this._defaultSettings()));
+    }
+
+    const tombstonesKey = this.prefix + "tombstones";
+    if (localStorage.getItem(tombstonesKey) === null) {
+      localStorage.setItem(tombstonesKey, "{}");
     }
   }
 }

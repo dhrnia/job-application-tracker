@@ -212,12 +212,13 @@ class CloudSync {
   /**
    * Merge cloud data into localStorage.
    *
-   * For collection keys (arrays) we merge by item `id`, keeping the
-   * version with the newest `updatedAt` (or `createdAt` as fallback).
-   * Items that exist only on one side are always preserved.
-   *
-   * For the settings key (plain object) the cloud version wins for any
-   * key present in both, but local-only keys are kept.
+   * Strategy:
+   *   1. Merge tombstones FIRST (union of local + cloud, keep latest
+   *      timestamp per id) so we know which items are deleted.
+   *   2. Merge each array collection by id, keeping the version with
+   *      the newest updatedAt.  Then filter out any item whose
+   *      tombstone timestamp >= its modification time.
+   *   3. Merge plain objects (settings) with cloud-wins semantics.
    *
    * @private
    * @param {object} cloudData – The full bin contents from JSONBin.
@@ -226,20 +227,36 @@ class CloudSync {
     if (!cloudData || typeof cloudData !== "object") return;
 
     const prefix = CLOUD_CONFIG.keyPrefix;
+    const tombstonesKey = prefix + "tombstones";
 
+    // --- Step 1: Merge tombstones first so we can filter collections ---------
+    let localTombstones = {};
+    try { localTombstones = JSON.parse(localStorage.getItem(tombstonesKey) || "{}"); } catch { /* empty */ }
+    const cloudTombstones = (cloudData[tombstonesKey] && typeof cloudData[tombstonesKey] === "object")
+      ? cloudData[tombstonesKey]
+      : {};
+    const mergedTombstones = this._mergeTombstones(localTombstones, cloudTombstones);
+    localStorage.setItem(tombstonesKey, JSON.stringify(mergedTombstones));
+
+    // --- Step 2: Merge every other prefixed key ------------------------------
     for (const [key, cloudValue] of Object.entries(cloudData)) {
-      // Only process our prefixed keys (skip _lastSync, initialized, etc.)
-      if (!key.startsWith(prefix)) continue;
+      if (!key.startsWith(prefix) || key === tombstonesKey) continue;
 
       const localRaw = localStorage.getItem(key);
 
-      // --- Array collections: merge by id ------------------------------------
+      // --- Array collections: merge by id, then filter tombstoned items ------
       if (Array.isArray(cloudValue)) {
         let localArr = [];
         try { localArr = JSON.parse(localRaw) || []; } catch { /* empty */ }
         if (!Array.isArray(localArr)) localArr = [];
 
-        const merged = this._mergeArraysById(localArr, cloudValue);
+        const merged = this._mergeArraysById(localArr, cloudValue)
+          .filter((item) => {
+            const tombstone = mergedTombstones[item.id];
+            if (!tombstone) return true;  // not deleted
+            // Keep the item only if it was modified AFTER the deletion
+            return this._timestamp(item) > (Date.parse(tombstone) || 0);
+          });
         localStorage.setItem(key, JSON.stringify(merged));
         continue;
       }
@@ -258,6 +275,25 @@ class CloudSync {
       // --- Primitive / unknown: cloud wins -----------------------------------
       localStorage.setItem(key, JSON.stringify(cloudValue));
     }
+  }
+
+  /**
+   * Merge two tombstone maps.  For each id, keep the latest timestamp.
+   * @private
+   * @param {object} localMap   { id: ISO-timestamp, … }
+   * @param {object} cloudMap   { id: ISO-timestamp, … }
+   * @returns {object}
+   */
+  _mergeTombstones(localMap, cloudMap) {
+    const merged = { ...localMap };
+    for (const [id, timestamp] of Object.entries(cloudMap)) {
+      const existing = Date.parse(merged[id] || 0) || 0;
+      const incoming = Date.parse(timestamp || 0) || 0;
+      if (incoming > existing) {
+        merged[id] = timestamp;
+      }
+    }
+    return merged;
   }
 
   /**
