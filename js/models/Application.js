@@ -15,6 +15,7 @@ class Application {
     this.status        = data.status        || "saved";
     this.appliedDate   = data.appliedDate   || null;
     this.source        = data.source        || "";
+    this.rounds        = data.rounds        ?? 0;
     this.notes         = data.notes         || "";
     this.tags          = Array.isArray(data.tags) ? [...data.tags] : [];
     this.priority      = data.priority      || "medium";

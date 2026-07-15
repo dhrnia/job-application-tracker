@@ -30,20 +30,20 @@ let currentFilter = "All";
 // --- Seed default data on first visit ---------------------------------------
 if (applications.length === 0) {
   store.addApplication({
-    company: "Northstar Labs",
-    role:    "Frontend Developer",
-    source:  "LinkedIn",
-    rounds:  2,
-    status:  "Interviewing",
-    notes:   "Technical interview scheduled next week."
+    companyName: "Northstar Labs",
+    jobTitle:    "Frontend Developer",
+    source:      "LinkedIn",
+    rounds:      2,
+    status:      "Interviewing",
+    notes:       "Technical interview scheduled next week."
   });
   store.addApplication({
-    company: "BrightPath",
-    role:    "Product Engineer",
-    source:  "Company website",
-    rounds:  4,
-    status:  "Offered",
-    notes:   "Received offer. Compare with expected salary range."
+    companyName: "BrightPath",
+    jobTitle:    "Product Engineer",
+    source:      "Company website",
+    rounds:      4,
+    status:      "Offered",
+    notes:       "Received offer. Compare with expected salary range."
   });
   applications = store.getApplications();
 }
@@ -92,14 +92,15 @@ form.addEventListener("submit", (event) => {
   const editingId = document.querySelector("#editingId").value;
   const timestamp = new Date().toISOString();
 
+  // Map form field names → Application model field names
   const data = {
-    company:   formData.get("company").trim(),
-    role:      formData.get("role").trim(),
-    source:    formData.get("source").trim(),
-    rounds:    Number(formData.get("rounds")),
-    status:    formData.get("status"),
-    notes:     formData.get("notes").trim(),
-    updatedAt: timestamp
+    companyName: formData.get("company").trim(),
+    jobTitle:    formData.get("role").trim(),
+    source:      formData.get("source").trim(),
+    rounds:      Number(formData.get("rounds")),
+    status:      formData.get("status"),
+    notes:       formData.get("notes").trim(),
+    updatedAt:   timestamp
   };
 
   if (editingId) {
@@ -156,8 +157,8 @@ applicationsEl.addEventListener("click", (event) => {
 
   if (event.target.matches(".edit-button")) {
     document.querySelector("#editingId").value = application.id;
-    document.querySelector("#company").value   = application.company;
-    document.querySelector("#role").value      = application.role;
+    document.querySelector("#company").value   = application.companyName;
+    document.querySelector("#role").value      = application.jobTitle;
     document.querySelector("#source").value    = application.source || "";
     document.querySelector("#rounds").value    = application.rounds;
     document.querySelector("#status").value    = application.status;
@@ -204,16 +205,16 @@ function render() {
   visible.forEach((application) => {
     const card = template.content.firstElementChild.cloneNode(true);
     card.dataset.id = application.id;
-    card.querySelector("h3").textContent  = application.company;
-    card.querySelector(".role").textContent = application.role;
+    card.querySelector("h3").textContent     = application.companyName;
+    card.querySelector(".role").textContent   = application.jobTitle;
     card.querySelector(".rounds").textContent = `${application.rounds} round${
       application.rounds === 1 ? "" : "s"
     } reached`;
     card.querySelector(".source").textContent = application.source
       ? `Via ${application.source}`
       : "Source not recorded";
-    card.querySelector(".date").textContent = formatDate(application.createdAt);
-    card.querySelector(".notes").textContent = application.notes || "No notes added.";
+    card.querySelector(".date").textContent   = formatDate(application.createdAt);
+    card.querySelector(".notes").textContent  = application.notes || "No notes added.";
 
     const pill = card.querySelector(".status-pill");
     pill.textContent = application.status;
