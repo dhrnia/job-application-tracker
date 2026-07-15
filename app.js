@@ -42,12 +42,17 @@ const saveStatus = document.querySelector("#saveStatus");
 let applications = loadApplications();
 let currentFilter = "All";
 
-saveApplications();
+initializeApp();
 
-if (sessionStorage.getItem(unlockKey) === "true") {
-  unlockApp();
-} else {
-  passwordInput.focus();
+async function initializeApp() {
+  await cloudSync.loadFromCloud();
+  applications = loadApplications();
+
+  if (sessionStorage.getItem(unlockKey) === "true") {
+    unlockApp();
+  } else {
+    passwordInput.focus();
+  }
 }
 
 lockForm.addEventListener("submit", (event) => {
@@ -199,7 +204,10 @@ function loadApplications() {
   try {
     const saved = localStorage.getItem(storageKey);
     const parsed = saved ? JSON.parse(saved) : null;
-    return Array.isArray(parsed) ? parsed : defaultApplications;
+    if (Array.isArray(parsed)) return parsed;
+
+    localStorage.setItem(storageKey, JSON.stringify(defaultApplications));
+    return defaultApplications;
   } catch {
     return defaultApplications;
   }
@@ -207,13 +215,8 @@ function loadApplications() {
 
 function saveApplications() {
   try {
-    const saved = JSON.stringify(applications);
-    localStorage.setItem(storageKey, saved);
-
-    if (localStorage.getItem(storageKey) !== saved) {
-      throw new Error("Storage verification failed");
-    }
-
+    localStorage.setItem(storageKey, JSON.stringify(applications));
+    cloudSync.schedulePush();
     setSaveStatus("Saved locally.");
     return true;
   } catch {

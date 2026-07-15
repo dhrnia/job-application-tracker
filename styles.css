@@ -76,7 +76,8 @@ button {
   font-weight: 750;
 }
 
-.save-status {
+.save-status,
+.sync-status {
   min-height: 1.25rem;
   margin: -6px 0 0;
   color: var(--success);
@@ -85,6 +86,15 @@ button {
 }
 
 .save-status.error {
+  color: var(--danger);
+}
+
+.sync-status {
+  margin-top: -12px;
+  color: var(--muted);
+}
+
+.sync-status.error {
   color: var(--danger);
 }
 
