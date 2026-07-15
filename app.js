@@ -23,30 +23,8 @@ const passwordInput  = document.querySelector("#passwordInput");
 const appShell       = document.querySelector("#appShell");
 const saveStatus     = document.querySelector("#saveStatus");
 
-// --- State ------------------------------------------------------------------
 let applications  = store.getApplications();
 let currentFilter = "All";
-
-// --- Seed default data on first visit ---------------------------------------
-if (applications.length === 0) {
-  store.addApplication({
-    companyName: "Northstar Labs",
-    jobTitle:    "Frontend Developer",
-    source:      "LinkedIn",
-    rounds:      2,
-    status:      "Interviewing",
-    notes:       "Technical interview scheduled next week."
-  });
-  store.addApplication({
-    companyName: "BrightPath",
-    jobTitle:    "Product Engineer",
-    source:      "Company website",
-    rounds:      4,
-    status:      "Offered",
-    notes:       "Received offer. Compare with expected salary range."
-  });
-  applications = store.getApplications();
-}
 
 // --- Boot -------------------------------------------------------------------
 initializeApp();
