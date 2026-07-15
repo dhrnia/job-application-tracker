@@ -1,4 +1,5 @@
 const storageKey = "job-application-tracker";
+const deletedApplicationsKey = "job-application-tracker-deleted";
 const password = "1703";
 const unlockKey = "job-application-tracker-unlocked";
 
@@ -40,6 +41,7 @@ const appShell = document.querySelector("#appShell");
 const saveStatus = document.querySelector("#saveStatus");
 
 let applications = loadApplications();
+let deletedApplications = loadDeletedApplications();
 let currentFilter = "All";
 
 initializeApp();
@@ -74,6 +76,8 @@ form.addEventListener("submit", (event) => {
 
   const formData = new FormData(form);
   const editingId = document.querySelector("#editingId").value;
+  const existingApplication = applications.find((item) => item.id === editingId);
+  const timestamp = new Date().toISOString();
   const application = {
     id: editingId || createId(),
     company: formData.get("company").trim(),
@@ -82,10 +86,11 @@ form.addEventListener("submit", (event) => {
     rounds: Number(formData.get("rounds")),
     status: formData.get("status"),
     notes: formData.get("notes").trim(),
-    createdAt: editingId
-      ? applications.find((item) => item.id === editingId)?.createdAt
-      : new Date().toISOString()
+    createdAt: existingApplication?.createdAt || timestamp,
+    updatedAt: timestamp
   };
+
+  delete deletedApplications[application.id];
 
   if (editingId) {
     applications = applications.map((item) => (item.id === editingId ? application : item));
@@ -101,6 +106,12 @@ form.addEventListener("submit", (event) => {
 cancelEdit.addEventListener("click", resetForm);
 
 clearCompleted.addEventListener("click", () => {
+  const removedApplications = applications.filter(
+    (application) => ["Rejected", "Offered"].includes(application.status)
+  );
+  removedApplications.forEach((application) => {
+    deletedApplications[application.id] = new Date().toISOString();
+  });
   applications = applications.filter(
     (application) => !["Rejected", "Offered"].includes(application.status)
   );
@@ -125,6 +136,7 @@ applicationsEl.addEventListener("click", (event) => {
   if (!application) return;
 
   if (event.target.matches(".delete-button")) {
+    deletedApplications[application.id] = new Date().toISOString();
     applications = applications.filter((item) => item.id !== application.id);
     saveApplications();
     render();
@@ -216,6 +228,7 @@ function loadApplications() {
 function saveApplications() {
   try {
     localStorage.setItem(storageKey, JSON.stringify(applications));
+    localStorage.setItem(deletedApplicationsKey, JSON.stringify(deletedApplications));
     cloudSync.schedulePush();
     setSaveStatus("Saved locally.");
     return true;
@@ -224,6 +237,27 @@ function saveApplications() {
     return false;
   }
 }
+
+function loadDeletedApplications() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(deletedApplicationsKey) || "{}");
+    return saved && typeof saved === "object" && !Array.isArray(saved) ? saved : {};
+  } catch {
+    return {};
+  }
+}
+
+window.addEventListener("clouddatachanged", (event) => {
+  applications = event.detail.applications;
+  deletedApplications = event.detail.deletedApplications;
+  render();
+});
+
+window.addEventListener("focus", () => cloudSync.loadFromCloud());
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") cloudSync.loadFromCloud();
+});
 
 function setSaveStatus(message, isError = false) {
   saveStatus.textContent = message;
