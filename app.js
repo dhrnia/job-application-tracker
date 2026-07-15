@@ -37,9 +37,12 @@ const lockForm = document.querySelector("#lockForm");
 const lockError = document.querySelector("#lockError");
 const passwordInput = document.querySelector("#passwordInput");
 const appShell = document.querySelector("#appShell");
+const saveStatus = document.querySelector("#saveStatus");
 
 let applications = loadApplications();
 let currentFilter = "All";
+
+saveApplications();
 
 if (sessionStorage.getItem(unlockKey) === "true") {
   unlockApp();
@@ -193,12 +196,35 @@ function countStatus(status) {
 }
 
 function loadApplications() {
-  const saved = localStorage.getItem(storageKey);
-  return saved ? JSON.parse(saved) : defaultApplications;
+  try {
+    const saved = localStorage.getItem(storageKey);
+    const parsed = saved ? JSON.parse(saved) : null;
+    return Array.isArray(parsed) ? parsed : defaultApplications;
+  } catch {
+    return defaultApplications;
+  }
 }
 
 function saveApplications() {
-  localStorage.setItem(storageKey, JSON.stringify(applications));
+  try {
+    const saved = JSON.stringify(applications);
+    localStorage.setItem(storageKey, saved);
+
+    if (localStorage.getItem(storageKey) !== saved) {
+      throw new Error("Storage verification failed");
+    }
+
+    setSaveStatus("Saved locally.");
+    return true;
+  } catch {
+    setSaveStatus("Your browser is blocking local storage. Open this tracker outside private browsing and try again.", true);
+    return false;
+  }
+}
+
+function setSaveStatus(message, isError = false) {
+  saveStatus.textContent = message;
+  saveStatus.classList.toggle("error", isError);
 }
 
 function resetForm() {

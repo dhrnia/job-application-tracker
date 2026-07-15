@@ -76,6 +76,18 @@ button {
   font-weight: 750;
 }
 
+.save-status {
+  min-height: 1.25rem;
+  margin: -6px 0 0;
+  color: var(--success);
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.save-status.error {
+  color: var(--danger);
+}
+
 .app-shell {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
