@@ -155,11 +155,28 @@ class CloudSync {
     try {
       this._setStatus(SYNC_STATUS.SYNCING);
 
-      // Collect every jobtracker_* key from localStorage into one object.
+      // Step 1 — Fetch the current cloud state so we don't overwrite
+      //          data created on another device.
+      let cloudData = {};
+      try {
+        const getRes = await fetch(
+          `${CLOUD_CONFIG.baseUrl}/${CLOUD_CONFIG.binId}/latest`,
+          { headers: this._headers() }
+        );
+        if (getRes.ok) cloudData = await getRes.json();
+      } catch {
+        // If fetch fails, proceed with local-only data (best effort).
+      }
+
+      // Step 2 — Merge cloud data into localStorage (other-device items
+      //          get added, conflicts resolved by newest updatedAt).
+      this._mergeCloudToLocal(cloudData);
+
+      // Step 3 — Collect the now-merged localStorage and push it.
       const payload = this._collectLocalData();
       payload._lastSync = new Date().toISOString();
 
-      const response = await fetch(
+      const putRes = await fetch(
         `${CLOUD_CONFIG.baseUrl}/${CLOUD_CONFIG.binId}`,
         {
           method: "PUT",
@@ -170,7 +187,10 @@ class CloudSync {
           body: JSON.stringify(payload)
         }
       );
-      if (!response.ok) throw new Error(`PUT ${response.status}`);
+      if (!putRes.ok) throw new Error(`PUT ${putRes.status}`);
+
+      // Step 4 — Notify the UI so it reflects any newly merged items.
+      window.dispatchEvent(new Event("cloudsyncupdated"));
 
       this._setStatus(SYNC_STATUS.SYNCED);
     } catch (err) {
