@@ -7,6 +7,7 @@ const defaultApplications = [
     id: createId(),
     company: "Northstar Labs",
     role: "Frontend Developer",
+    source: "LinkedIn",
     rounds: 2,
     status: "Interviewing",
     notes: "Technical interview scheduled next week.",
@@ -16,6 +17,7 @@ const defaultApplications = [
     id: createId(),
     company: "BrightPath",
     role: "Product Engineer",
+    source: "Company website",
     rounds: 4,
     status: "Offered",
     notes: "Received offer. Compare with expected salary range.",
@@ -68,6 +70,7 @@ form.addEventListener("submit", (event) => {
     id: editingId || createId(),
     company: formData.get("company").trim(),
     role: formData.get("role").trim(),
+    source: formData.get("source").trim(),
     rounds: Number(formData.get("rounds")),
     status: formData.get("status"),
     notes: formData.get("notes").trim(),
@@ -123,6 +126,7 @@ applicationsEl.addEventListener("click", (event) => {
     document.querySelector("#editingId").value = application.id;
     document.querySelector("#company").value = application.company;
     document.querySelector("#role").value = application.role;
+    document.querySelector("#source").value = application.source || "";
     document.querySelector("#rounds").value = application.rounds;
     document.querySelector("#status").value = application.status;
     document.querySelector("#notes").value = application.notes;
@@ -157,6 +161,9 @@ function render() {
     card.querySelector(".rounds").textContent = `${application.rounds} round${
       application.rounds === 1 ? "" : "s"
     } reached`;
+    card.querySelector(".source").textContent = application.source
+      ? `Via ${application.source}`
+      : "Source not recorded";
     card.querySelector(".date").textContent = formatDate(application.createdAt);
     card.querySelector(".notes").textContent = application.notes || "No notes added.";
 
